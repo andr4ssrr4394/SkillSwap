@@ -1,0 +1,10 @@
+# Archivos generados en tiempo de ejecución (no versionar)
+skillswap/uploads/certificates/*
+skillswap/assets/img/avatars/*
+!skillswap/uploads/certificates/.htaccess
+!skillswap/assets/img/avatars/.htaccess
+
+# Respaldos / temporales
+*.sql.bak
+*.tar.gz
+*.zip

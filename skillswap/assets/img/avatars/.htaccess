@@ -1,0 +1,10 @@
+# Defense in depth: los avatares solo deben servirse como imagenes.
+# Nota: este servidor tiene AllowOverride None, por lo que la regla puede no aplicarse;
+# la proteccion real esta en uploadAvatarImage() (validacion por contenido y extension derivada).
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .phar
+</IfModule>
+<FilesMatch "\.(php|phtml|php[0-9]|phar|cgi|pl|py|sh|htaccess)$">
+    Require all denied
+</FilesMatch>
