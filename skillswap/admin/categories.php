@@ -11,6 +11,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add_category') {
         $name = trim($_POST['name'] ?? '');
         $icon = trim($_POST['icon'] ?? 'bi-book');
+        if (!preg_match('/^bi-[a-z0-9-]{1,40}$/', $icon)) {
+            $icon = 'bi-book';
+        }
         if (!empty($name)) {
             $stmt = $conn->prepare("INSERT INTO categories (name, icon) VALUES (?, ?)");
             $stmt->bind_param("ss", $name, $icon);
@@ -46,6 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('/skillswap/admin/categories.php');
 }
 
+$pageTitle = 'Gestionar categorías';
+$pageDescription = 'Gestiona las categorías de habilidades de SkillSwap: crea, edita y organiza las categorías que clasifican las habilidades de la plataforma.';
 require_once __DIR__ . '/../includes/header.php';
 
 $categories = $conn->query("SELECT c.*, COUNT(s.id) as skill_count FROM categories c LEFT JOIN skills s ON s.category_id = c.id GROUP BY c.id ORDER BY c.name");
@@ -70,13 +75,13 @@ $allSkills = $conn->query("SELECT s.*, c.name as category_name FROM skills s LEF
                         <input type="text" class="form-control" name="icon" placeholder="bi-book" value="bi-book">
                     </div>
                     <div class="col-2">
-                        <button class="btn btn-success w-100"><i class="bi bi-plus"></i></button>
+                        <button class="btn btn-success w-100"><i class="bi bi-plus-lg"></i> Añadir</button>
                     </div>
                 </form>
                 <table class="table table-sm">
                     <?php while ($c = $categories->fetch_assoc()): ?>
                         <tr>
-                            <td><i class="bi <?= $c['icon'] ?>"></i> <?= htmlspecialchars($c['name']) ?></td>
+                            <td><i class="bi <?= htmlspecialchars($c['icon']) ?>"></i> <?= htmlspecialchars($c['name']) ?></td>
                             <td class="text-muted"><?= $c['skill_count'] ?> skills</td>
                             <td>
                                 <form method="POST" class="d-inline">
@@ -116,7 +121,7 @@ $allSkills = $conn->query("SELECT s.*, c.name as category_name FROM skills s LEF
                         <input type="text" class="form-control" name="name" placeholder="Nombre habilidad" required>
                     </div>
                     <div class="col-2">
-                        <button class="btn btn-success w-100"><i class="bi bi-plus"></i></button>
+                        <button class="btn btn-success w-100"><i class="bi bi-plus-lg"></i> Añadir</button>
                     </div>
                 </form>
                 <div style="max-height: 400px; overflow-y: auto;">

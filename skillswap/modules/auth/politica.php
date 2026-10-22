@@ -7,9 +7,11 @@ require_once __DIR__ . '/../../includes/auth.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Política de Privacidad - SkillSwap</title>
+    <meta name="description" content="Política de privacidad de SkillSwap: conoce qué datos personales recopilamos, cómo los usamos y protegemos, y cuáles son tus derechos como usuario.">
+    <link rel="icon" type="image/svg+xml" href="/skillswap/assets/img/favicon.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="/skillswap/assets/css/style.css?v=2" rel="stylesheet">
+    <link href="<?= asset_url('css/style.css') ?>" rel="stylesheet">
     <script>
         (function() {
             var theme = localStorage.getItem('skillswap-theme') || 'light';
@@ -18,13 +20,14 @@ require_once __DIR__ . '/../../includes/auth.php';
     </script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg sticky-top">
+    <nav class="navbar navbar-expand-lg sticky-top navbar-role-guest">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="/skillswap/">
                 <i class="bi bi-arrow-repeat brand-accent me-1"></i>
                 <span>skill<span class="brand-accent">swap</span></span>
             </a>
             <div class="d-flex align-items-center gap-2">
+                <a class="nav-link d-none d-sm-inline" href="/skillswap/"><i class="bi bi-house"></i> Inicio</a>
                 <button class="theme-toggle" id="themeToggle" type="button" title="Cambiar tema" aria-label="Cambiar tema">
                     <i class="bi bi-moon-stars" id="themeIcon"></i>
                 </button>
@@ -83,6 +86,22 @@ require_once __DIR__ . '/../../includes/auth.php';
             </div>
         </div>
     </div>
+
+    <footer class="footer-strip">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <strong>skill<span style="color: var(--reddit-orange)">swap</span></strong>
+                    <span class="ms-2">Intercambio de habilidades entre estudiantes</span>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <span class="me-3">© <?= date('Y') ?> SkillSwap</span>
+                    <span>Tercer Año de Desarrollo de Software</span>
+                </div>
+            </div>
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         const html = document.documentElement;

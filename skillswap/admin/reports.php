@@ -1,4 +1,6 @@
 <?php
+$pageTitle = 'Reportes y estadísticas';
+$pageDescription = 'Reportes de SkillSwap: estadísticas de usuarios, intercambios y horas, con gráficas y exportación a CSV para su análisis.';
 require_once __DIR__ . '/../includes/header.php';
 requireAdmin();
 
@@ -227,6 +229,14 @@ $modalityRes->free();
     Chart.defaults.font.family = "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
     Chart.defaults.color = getComputedStyle(document.body).getPropertyValue('--bs-body-color') || '#212529';
 
+    // Paleta coherente con el resto de la aplicación (variables CSS).
+    var skPalette = {};
+    (function () {
+        var root = getComputedStyle(document.documentElement);
+        ['--reddit-orange', '--reddit-link', '--sk-teal', '--sk-green', '--sk-purple', '--sk-amber']
+            .forEach(function (name) { skPalette[name] = root.getPropertyValue(name).trim(); });
+    })();
+
     var skillCanvas = document.getElementById('skillsChart');
     if (skillCanvas) {
         new Chart(skillCanvas, {
@@ -236,7 +246,7 @@ $modalityRes->free();
                 datasets: [{
                     label: 'Usuarios que la ofrecen',
                     data: <?= json_encode($skillData) ?>,
-                    backgroundColor: '#ff4500',
+                    backgroundColor: skPalette['--reddit-orange'] || '#e8662d',
                     borderRadius: 4
                 }]
             },
@@ -260,8 +270,8 @@ $modalityRes->free();
                 datasets: [{
                     label: 'Completados',
                     data: <?= json_encode($monthData) ?>,
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13,110,253,.15)',
+                    borderColor: skPalette['--reddit-link'] || '#2563c9',
+                    backgroundColor: 'rgba(37,99,201,.15)',
                     fill: true,
                     tension: .3,
                     pointRadius: 4
@@ -283,7 +293,7 @@ $modalityRes->free();
                 labels: ['Virtual', 'Presencial'],
                 datasets: [{
                     data: [<?= (int)$modalityData['virtual'] ?>, <?= (int)$modalityData['presencial'] ?>],
-                    backgroundColor: ['#0dcaf0', '#6c757d']
+                    backgroundColor: [skPalette['--sk-teal'] || '#3e9a9a', skPalette['--sk-amber'] || '#c9953e']
                 }]
             },
             options: {responsive: true, plugins: {legend: {position: 'bottom'}}}

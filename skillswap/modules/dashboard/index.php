@@ -1,4 +1,6 @@
 <?php
+$pageTitle = 'Mi panel';
+$pageDescription = 'Tu panel en SkillSwap: revisa tus intercambios activos, propuestas pendientes, matches recomendados y notificaciones, todo en un solo lugar.';
 require_once __DIR__ . '/../../includes/header.php';
 requireLogin();
 
@@ -162,18 +164,18 @@ $stmt->close();
                                 <div class="small text-success">Tú enseñas <?= $e['skill_requested_id'] ? htmlspecialchars($e['requested_name']) : 'nada (solo aprendes)' ?> · <?= formatHours($e['acceptor_hours']) ?></div>
                                 <div class="small text-info">Ellos te enseñan <?= $e['skill_offered_id'] ? htmlspecialchars($e['offered_name']) : 'nada (solo aprenden de ti)' ?> · <?= formatHours($e['proposer_hours']) ?></div>
                             </div>
-                            <div class="text-end">
+                            <div class="text-end d-flex flex-wrap gap-2 justify-content-end">
                                 <form method="POST" action="/skillswap/modules/exchanges/accept.php" class="d-inline">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="exchange_id" value="<?= $e['id'] ?>">
                                     <input type="hidden" name="action" value="accept">
-                                    <button class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i></button>
+                                    <button class="btn btn-sm btn-success"><i class="bi bi-check-lg"></i> Aceptar</button>
                                 </form>
                                 <form method="POST" action="/skillswap/modules/exchanges/accept.php" class="d-inline">
                                     <?= csrf_field() ?>
                                     <input type="hidden" name="exchange_id" value="<?= $e['id'] ?>">
                                     <input type="hidden" name="action" value="reject">
-                                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i> Rechazar</button>
                                 </form>
                             </div>
                         </div>
@@ -207,12 +209,15 @@ $stmt->close();
                                 <?php endif; ?>
                             </div>
                         </div>
-                        <div class="text-end">
-                            <a href="/skillswap/modules/messages/index.php?exchange_id=<?= $e['id'] ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chat-left-text"></i></a>
+                        <div class="text-end d-flex flex-wrap gap-2 justify-content-end">
+                            <a href="/skillswap/modules/messages/index.php?exchange_id=<?= $e['id'] ?>" class="btn btn-sm btn-outline-secondary"><i class="bi bi-chat-left-text"></i> Mensajes</a>
                             <form method="POST" action="/skillswap/modules/exchanges/complete.php" class="d-inline">
                                 <?= csrf_field() ?>
                                 <input type="hidden" name="exchange_id" value="<?= $e['id'] ?>">
-                                <button class="btn btn-sm btn-primary"><i class="bi bi-check2-circle"></i></button>
+                                <button class="btn btn-sm btn-primary"
+                                        data-confirm="¿Confirmar finalización del intercambio?">
+                                    <i class="bi bi-check2-circle"></i> Confirmar finalización
+                                </button>
                             </form>
                         </div>
                     </div>
@@ -254,7 +259,7 @@ $stmt->close();
                             <div class="small text-muted"><?= htmlspecialchars($m['career'] ?? '') ?></div>
                             <small class="text-success">Te enseña: <?= htmlspecialchars($m['they_teach_me']) ?></small>
                         </div>
-                        <a href="/skillswap/modules/exchanges/propose.php?user_id=<?= $m['id'] ?>" class="btn btn-sm btn-orange"><i class="bi bi-arrow-repeat"></i></a>
+                        <a href="/skillswap/modules/exchanges/propose.php?user_id=<?= $m['id'] ?>" class="btn btn-sm btn-orange"><i class="bi bi-arrow-repeat"></i> Proponer intercambio</a>
                     </div>
                 <?php endwhile; ?>
             <?php else: ?>

@@ -27,7 +27,18 @@ if ($currentUser) {
     $hc->close();
     $userAvatar = getAvatarUrl($currentUser);
 }
+// Título y meta descripción por página (las páginas pueden definirlos antes de
+// incluir este archivo). La descripción refleja el contenido de cada sección.
 $pageTitle = $pageTitle ?? 'SkillSwap';
+$pageDescription = $pageDescription ?? 'SkillSwap: intercambia habilidades entre estudiantes. Enseña lo que sabes, aprende lo que necesitas y acumula horas de aprendizaje.';
+
+// URL canónica y datos para redes sociales (dinámicos: funcionan en localhost,
+// túnel o dominio propio).
+$seoHost   = $_SERVER['HTTP_HOST'] ?? 'localhost';
+$seoScheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+$seoPath   = strtok((string)($_SERVER['REQUEST_URI'] ?? '/skillswap/'), '?');
+$seoUrl    = $seoScheme . '://' . $seoHost . $seoPath;
+$seoImage  = $seoScheme . '://' . $seoHost . '/skillswap/assets/img/og-image.png';
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -35,9 +46,26 @@ $pageTitle = $pageTitle ?? 'SkillSwap';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($pageTitle) ?> - SkillSwap</title>
+    <meta name="description" content="<?= htmlspecialchars($pageDescription) ?>">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="<?= htmlspecialchars($seoUrl) ?>">
+    <!-- Open Graph (enlaces compartidos en WhatsApp, Facebook, etc.) -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="SkillSwap">
+    <meta property="og:title" content="<?= htmlspecialchars($pageTitle) ?> - SkillSwap">
+    <meta property="og:description" content="<?= htmlspecialchars($pageDescription) ?>">
+    <meta property="og:url" content="<?= htmlspecialchars($seoUrl) ?>">
+    <meta property="og:image" content="<?= htmlspecialchars($seoImage) ?>">
+    <meta property="og:locale" content="es_AR">
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<?= htmlspecialchars($pageTitle) ?> - SkillSwap">
+    <meta name="twitter:description" content="<?= htmlspecialchars($pageDescription) ?>">
+    <meta name="twitter:image" content="<?= htmlspecialchars($seoImage) ?>">
+    <link rel="icon" type="image/svg+xml" href="/skillswap/assets/img/favicon.svg">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="/skillswap/assets/css/style.css?v=2" rel="stylesheet">
+    <link href="<?= asset_url('css/style.css') ?>" rel="stylesheet">
     <script>
         (function() {
             var theme = localStorage.getItem('skillswap-theme') || 'light';
@@ -46,7 +74,7 @@ $pageTitle = $pageTitle ?? 'SkillSwap';
     </script>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg sticky-top">
+    <nav class="navbar navbar-expand-lg sticky-top<?= $currentUser ? ' navbar-role-' . htmlspecialchars($currentUser['role']) : ' navbar-role-guest' ?>">
         <div class="container">
             <a class="navbar-brand d-flex align-items-center" href="/skillswap/">
                 <i class="bi bi-arrow-repeat brand-accent me-1"></i>
@@ -56,18 +84,25 @@ $pageTitle = $pageTitle ?? 'SkillSwap';
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
+                <?php
+                // Resalta el enlace de la sección actual (navegación clara y orientada).
+                $__current = strtolower(str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? ''));
+                $navActive = function ($needle) use ($__current) {
+                    return strpos($__current, $needle) !== false ? ' active' : '';
+                };
+                ?>
                 <?php if ($currentUser): ?>
                 <ul class="navbar-nav me-auto">
-                    <li class="nav-item"><a class="nav-link" href="/skillswap/modules/dashboard/index.php">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/skillswap/modules/skills/index.php">Explorar</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/skillswap/modules/matches/index.php">Matches</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/skillswap/modules/exchanges/index.php">
+                    <li class="nav-item"><a class="nav-link<?= $navActive('/dashboard/') ?>" href="/skillswap/modules/dashboard/index.php"<?= $navActive('/dashboard/') ? ' aria-current="page"' : '' ?>><i class="bi bi-speedometer2"></i> Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link<?= $navActive('/skills/') ?>" href="/skillswap/modules/skills/index.php"<?= $navActive('/skills/') ? ' aria-current="page"' : '' ?>><i class="bi bi-search"></i> Explorar</a></li>
+                    <li class="nav-item"><a class="nav-link<?= $navActive('/matches/') ?>" href="/skillswap/modules/matches/index.php"<?= $navActive('/matches/') ? ' aria-current="page"' : '' ?>><i class="bi bi-lightning"></i> Matches</a></li>
+                    <li class="nav-item"><a class="nav-link<?= $navActive('/exchanges/') ?>" href="/skillswap/modules/exchanges/index.php"<?= $navActive('/exchanges/') ? ' aria-current="page"' : '' ?>>
                         <i class="bi bi-arrow-repeat"></i> Intercambios
                         <?php if ($pendingCount > 0): ?>
                             <span class="badge bg-warning text-dark ms-1"><?= $pendingCount ?></span>
                         <?php endif; ?>
                     </a></li>
-                    <li class="nav-item"><a class="nav-link" href="/skillswap/modules/messages/index.php"><i class="bi bi-chat-left-text"></i> Mensajes</a></li>
+                    <li class="nav-item"><a class="nav-link<?= $navActive('/messages/') ?>" href="/skillswap/modules/messages/index.php"<?= $navActive('/messages/') ? ' aria-current="page"' : '' ?>><i class="bi bi-chat-left-text"></i> Mensajes</a></li>
                 </ul>
                 <ul class="navbar-nav align-items-center gap-2">
                     <li class="nav-item dropdown">
@@ -123,7 +158,7 @@ $pageTitle = $pageTitle ?? 'SkillSwap';
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="/skillswap/modules/profile/index.php"><i class="bi bi-person"></i> Mi Perfil</a></li>
                             <li><a class="dropdown-item" href="/skillswap/modules/profile/edit.php"><i class="bi bi-pencil"></i> Editar Perfil</a></li>
-                            <li><a class="dropdown-item" href="/skillswap/modules/profile/certificate.php" target="_blank"><i class="bi bi-file-earmark-text"></i> Constancia de Horas</a></li>
+                            <li><a class="dropdown-item" href="/skillswap/modules/profile/certificate.php" target="_blank" rel="noopener"><i class="bi bi-file-earmark-text"></i> Constancia de Horas</a></li>
                             <?php if ($currentUser['role'] === 'admin'): ?>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="/skillswap/admin/index.php"><i class="bi bi-shield-lock"></i> Admin</a></li>
@@ -134,7 +169,20 @@ $pageTitle = $pageTitle ?? 'SkillSwap';
                     </li>
                 </ul>
                 <?php else: ?>
-                <ul class="navbar-nav ms-auto align-items-center gap-2">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link<?= (strpos($__current, '/skillswap/index.php') !== false || preg_match('#/skillswap/$#', $__current)) ? ' active' : '' ?>" href="/skillswap/">
+                            <i class="bi bi-house"></i> Inicio
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/skillswap/#como-funciona"><i class="bi bi-info-circle"></i> Cómo funciona</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/skillswap/#categorias"><i class="bi bi-grid"></i> Categorías</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav align-items-center gap-2">
                     <li class="nav-item">
                         <button class="theme-toggle" type="button" id="themeToggle" title="Cambiar tema" aria-label="Cambiar tema">
                             <i class="bi bi-moon-stars" id="themeIcon"></i>
@@ -179,17 +227,27 @@ $pageTitle = $pageTitle ?? 'SkillSwap';
 
     <main class="container py-4">
         <?php
+        // Botón "Volver al panel" para las páginas internas del panel de administración
+        $__script = $_SERVER['SCRIPT_NAME'] ?? '';
+        if (strpos($__script, '/admin/') !== false && basename($__script) !== 'index.php'): ?>
+            <div class="mb-3">
+                <a href="/skillswap/admin/index.php" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Volver al panel
+                </a>
+            </div>
+        <?php endif; ?>
+        <?php
         $error = flash('error');
         $success = flash('success');
         if ($error): ?>
             <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                <?= $error ?>
+                <?= htmlspecialchars($error) ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif;
         if ($success): ?>
             <div class="alert alert-success alert-dismissible fade show" role="alert">
-                <?= $success ?>
+                <?= htmlspecialchars($success) ?>
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         <?php endif; ?>

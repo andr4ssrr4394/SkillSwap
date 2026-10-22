@@ -1,4 +1,6 @@
 <?php
+$pageTitle = 'Mis intercambios';
+$pageDescription = 'Gestiona tus intercambios de habilidades: acepta o rechaza propuestas, programa la sesión, confirma la finalización y negocia horas.';
 require_once __DIR__ . '/../../includes/header.php';
 requireLogin();
 

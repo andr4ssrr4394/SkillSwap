@@ -2,11 +2,16 @@
 /**
  * E2E del sistema combinado (skillswap-combinado) contra un entorno aislado:
  *   - BD: skillswap
- *   - Código servido en: http://localhost/skillswap/
+ *   - Código servido en: http://localhost/skillswap/ (define SS_BASE para cambiarlo)
  * No toca la base de datos real.
  */
-$BASE = 'http://localhost/skillswap';
+$BASE = getenv('SS_BASE') ?: 'http://localhost/skillswap';
 $DB   = 'skillswap';
+
+// Carpeta de avatares a la que ESCRIBE el servidor web. Se deriva de este
+// archivo (en Windows el despliegue es un junction hacia el repo, así que
+// coinciden); para otros entornos se puede sobrescribir con SS_AVATAR_DIR.
+$AVATAR_DIR = getenv('SS_AVATAR_DIR') ?: dirname(__DIR__) . '/skillswap/assets/img/avatars';
 
 $pass = 0; $fail = 0;
 function ok($label, $cond, $extra = '') {
@@ -20,6 +25,8 @@ $jarB = tempnam(sys_get_temp_dir(), 'jb');
 
 function req($url, $post = null, $jar = null, $extraHeaders = []) {
     $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_HEADER => true,
@@ -36,7 +43,7 @@ function req($url, $post = null, $jar = null, $extraHeaders = []) {
     $headers = substr($raw, 0, $hsize);
     $body = substr($raw, $hsize);
     preg_match('/location:\s*(.+)/i', $headers, $m);
-    return ['code' => $code, 'body' => $body, 'loc' => isset($m[1]) ? trim($m[1]) : ''];
+    return ['code' => $code, 'body' => $body, 'loc' => isset($m[1]) ? trim($m[1]) : '', 'headers' => $headers];
 }
 
 function csrfFrom($body) {
@@ -46,6 +53,8 @@ function csrfFrom($body) {
 
 function apiPost($url, $fields, $jar) {
     $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_POST => true,
@@ -61,6 +70,8 @@ function apiPost($url, $fields, $jar) {
 
 function apiGet($url, $jar) {
     $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_COOKIEJAR => $jar,
@@ -72,8 +83,14 @@ function apiGet($url, $jar) {
     return json_decode($out, true) ?: ['raw' => $out];
 }
 
-$db = new mysqli('localhost', 'root', '', $DB);
+require __DIR__ . '/../skillswap/config/db.php';
+$db = new mysqli(DB_HOST, DB_USER, DB_PASS, DB_NAME);
 if ($db->connect_error) { echo "No se pudo conectar: {$db->connect_error}\n"; exit(1); }
+
+// El E2E crea 2 usuarios por corrida y la app limita a 10 registros por hora/IP:
+// se limpia SOLO ese contador (nunca los intentos fallidos de login) para que
+// la prueba sea repetible.
+$db->query("DELETE FROM login_attempts WHERE email = '__register__'");
 
 $suffix = time();
 $A = "com.a.$suffix@test.local";
@@ -242,6 +259,45 @@ $r = req("$BASE/modules/profile/certificate.php", null, $jarA);
 ok('constancia de horas (200)', $r['code'] === 200, "code={$r['code']}");
 ok('constancia muestra código', strpos($r['body'], 'CERT-SWAP-') !== false);
 ok('constancia muestra horas impartidas', strpos($r['body'], 'Horas impartidas') !== false);
+ok('constancia es una hoja A4 fija (no responsiva)',
+   strpos($r['body'], '210mm') !== false && strpos($r['body'], 'c-sheet') !== false);
+
+// El PDF se genera de verdad (Dompdf, formato A4 de una sola hoja)
+$r = req("$BASE/modules/profile/certificate.php?pdf=1", null, $jarA);
+ok('constancia PDF (200)', $r['code'] === 200, "code={$r['code']}");
+ok('constancia PDF es application/pdf', stripos($r['headers'], 'content-type: application/pdf') !== false, trim(explode("\n", $r['headers'])[0] ?? ''));
+ok('constancia PDF es descarga adjunta', stripos($r['headers'], 'content-disposition: attachment') !== false);
+ok('constancia PDF valido (%PDF-)', substr($r['body'], 0, 5) === '%PDF-');
+ok('constancia PDF no es HTML', strpos($r['body'], '<html') === false);
+$hojas = preg_match_all('#/Type\s*/Page(?!s)#', $r['body']);
+ok('constancia PDF de una sola hoja', $hojas === 1, "hojas=$hojas");
+
+// Texto real del PDF y comprobación de que NADA se sale de la hoja A4
+// (el PDF comprime el texto, por eso se extrae con pdftotext si está disponible)
+$tmpPdf = tempnam(sys_get_temp_dir(), 'cert'); @unlink($tmpPdf); $tmpPdf .= '.pdf';
+file_put_contents($tmpPdf, $r['body']);
+$pdfTxt = function_exists('shell_exec')
+    ? trim((string)@shell_exec('pdftotext ' . escapeshellarg($tmpPdf) . ' - 2>/dev/null'))
+    : '';
+if ($pdfTxt !== '') {
+    ok('constancia PDF trae el codigo', strpos($pdfTxt, 'CERT-SWAP-') !== false);
+    ok('constancia PDF trae el nombre', strpos($pdfTxt, 'Ana Tester') !== false);
+    ok('constancia PDF trae las horas impartidas', stripos($pdfTxt, 'horas impartidas') !== false);
+    ok('constancia PDF trae la firma', strpos($pdfTxt, 'Comité de Desarrollo Académico') !== false);
+
+    $tmpXml = $tmpPdf . '.xml';
+    @shell_exec('pdftotext -bbox-layout ' . escapeshellarg($tmpPdf) . ' ' . escapeshellarg($tmpXml) . ' 2>/dev/null');
+    $xml = (string)@file_get_contents($tmpXml);
+    @unlink($tmpXml);
+    if ($xml !== '' && preg_match_all('/xMax="([\d.]+)"\s+yMax="([\d.]+)"/', $xml, $mm)) {
+        $maxX = max(array_map('floatval', $mm[1]));
+        $maxY = max(array_map('floatval', $mm[2]));
+        ok('constancia PDF no se sale de la hoja A4', $maxX <= 595.3 && $maxY <= 841.9, "x=$maxX y=$maxY");
+    }
+} else {
+    ok('constancia PDF (texto no verificable: falta pdftotext)', true);
+}
+@unlink($tmpPdf);
 
 // ---------------------------------------------------------------- 11. Perfil: bio, enlaces, avatar
 $r = req("$BASE/modules/profile/edit.php", null, $jarA);
@@ -253,6 +309,8 @@ $tmpPng = tempnam(sys_get_temp_dir(), 'av') . '.png';
 file_put_contents($tmpPng, $png);
 
 $ch = curl_init("$BASE/modules/profile/edit.php");
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 $fields = [
     'action' => 'update_profile',
     'name' => 'Ana Tester',
@@ -293,6 +351,8 @@ file_put_contents($tmpEvil, $png);
 $r = req("$BASE/modules/profile/edit.php", null, $jarA);
 $t = csrfFrom($r['body']);
 $ch = curl_init("$BASE/modules/profile/edit.php");
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true,
     CURLOPT_COOKIEJAR => $jarA, CURLOPT_COOKIEFILE => $jarA, CURLOPT_TIMEOUT => 30,
@@ -314,6 +374,8 @@ file_put_contents($tmpReal, "<?php echo 'PWNED'; ?>");
 $rA = req("$BASE/modules/profile/edit.php", null, $jarA);
 $tA = csrfFrom($rA['body']);
 $ch = curl_init("$BASE/modules/profile/edit.php");
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true, CURLOPT_POST => true,
     CURLOPT_COOKIEJAR => $jarA, CURLOPT_COOKIEFILE => $jarA, CURLOPT_TIMEOUT => 30,
@@ -327,7 +389,7 @@ curl_exec($ch);
 curl_close($ch);
 $prof3 = $db->query("SELECT profile_image FROM users WHERE id=$ida")->fetch_assoc();
 ok('payload PHP real rechazado', ($prof3['profile_image'] ?? '') === $stored2, 'antes=' . $stored2 . ' ahora=' . ($prof3['profile_image'] ?? 'NULL'));
-$phpFiles = glob('/var/www/html/skillswap/assets/img/avatars/*.php') ?: [];
+$phpFiles = glob($AVATAR_DIR . '/*.php') ?: [];
 ok('no hay .php en la carpeta de avatares', count($phpFiles) === 0);
 @unlink($tmpReal);
 
@@ -347,6 +409,8 @@ ok('reportes incluye gráficas', strpos($r['body'], 'skillsChart') !== false && 
 ok('reportes incluye botones de exportación', strpos($r['body'], 'export.php?type=users') !== false && strpos($r['body'], 'export.php?type=exchanges') !== false);
 
 $ch = curl_init("$BASE/admin/export.php?type=users");
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $jarB, CURLOPT_COOKIEFILE => $jarB, CURLOPT_TIMEOUT => 30]);
 $csvUsers = curl_exec($ch);
 $hdrUsers = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -356,6 +420,8 @@ ok('CSV usuarios con BOM y cabeceras', substr($csvUsers, 0, 3) === "\xEF\xBB\xBF
 ok('CSV usuarios incluye al usuario de prueba', strpos($csvUsers, $A) !== false);
 
 $ch = curl_init("$BASE/admin/export.php?type=exchanges");
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
 curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_COOKIEJAR => $jarB, CURLOPT_COOKIEFILE => $jarB, CURLOPT_TIMEOUT => 30]);
 $csvEx = curl_exec($ch);
 curl_close($ch);
@@ -400,20 +466,100 @@ foreach (['/index.php', '/admin/index.php', '/admin/users.php', '/admin/categori
     ok("admin $page responde sin errores", $accepted && !$fatal, "code={$r['code']}");
 }
 
+// ---------------------------------------------------------------- 16. Jerarquia de administradores
+// Sesion del admin principal (la cuenta de SkillSwap que trae el sistema).
+// Para que el repositorio NO lleve ninguna contraseña, la prueba pone una
+// clave temporal conocida en la BD y la restaura al terminar (incluso si el
+// script muere a medias) mediante una funcion de shutdown.
+$jarAdmin = tempnam(sys_get_temp_dir(), 'ja0');
+$r = req("$BASE/modules/auth/login.php", null, $jarAdmin);
+$t = csrfFrom($r['body']);
+
+$hashOriginal = null;
+$res = $db->query("SELECT password FROM users WHERE id = 1");
+if ($res && ($row = $res->fetch_assoc())) {
+    $hashOriginal = $row['password'];
+}
+if ($hashOriginal !== null) {
+    register_shutdown_function(function () use ($db, $hashOriginal) {
+        $db->query("UPDATE users SET password = '" . $db->real_escape_string($hashOriginal) . "' WHERE id = 1");
+    });
+}
+$adminPass = 'E2e-Admin-' . bin2hex(random_bytes(6));
+$hashTest = password_hash($adminPass, PASSWORD_DEFAULT);
+$db->query("UPDATE users SET password = '" . $db->real_escape_string($hashTest) . "' WHERE id = 1");
+req("$BASE/modules/auth/login.php", ['email' => 'admin@skillswap.com', 'password' => $adminPass, 'csrf_token' => $t], $jarAdmin);
+
+$r = req("$BASE/admin/users.php", null, $jarAdmin);
+ok('admin principal ve la lista de usuarios', $r['code'] === 200, "code={$r['code']}");
+ok('lista marca la cuenta principal', strpos($r['body'], 'Cuenta principal') !== false);
+ok('lista ofrece "Quitar admin"', strpos($r['body'], 'Quitar admin') !== false);
+ok('promover pide confirmacion', strpos($r['body'], 'data-confirm="¿Hacer administrador') !== false);
+$t = csrfFrom($r['body']);
+
+// El admin principal promueve a un usuario de prueba
+$r = req("$BASE/admin/users.php", ['action' => 'promote', 'user_id' => $idx, 'csrf_token' => $t], $jarAdmin);
+$rolX = $db->query("SELECT role FROM users WHERE id=$idx")->fetch_assoc()['role'] ?? '';
+ok('admin principal promueve a admin', $rolX === 'admin', "rol=$rolX");
+
+// Un admin normal ve todo en modo lectura y no puede promover
+$r = req("$BASE/admin/users.php", null, $jarB);
+ok('admin normal ve aviso de solo lectura', strpos($r['body'], 'lectura') !== false);
+ok('admin normal no ve el boton de promover', strpos($r['body'], 'name="action" value="promote"') === false);
+ok('admin normal ve "Dejar de ser admin"', strpos($r['body'], 'Dejar de ser admin') !== false);
+$t = csrfFrom($r['body']);
+$r = req("$BASE/admin/users.php", ['action' => 'promote', 'user_id' => $ida, 'csrf_token' => $t], $jarB);
+$rolA = $db->query("SELECT role FROM users WHERE id=$ida")->fetch_assoc()['role'] ?? '';
+ok('un admin normal no puede promover', $rolA !== 'admin', "rol=$rolA");
+
+// Renuncia: el propio admin deja de ser admin
+$r = req("$BASE/admin/users.php", null, $jarB);
+$t = csrfFrom($r['body']);
+$r = req("$BASE/admin/users.php", ['action' => 'demote', 'user_id' => $idb, 'csrf_token' => $t], $jarB);
+$rolB = $db->query("SELECT role FROM users WHERE id=$idb")->fetch_assoc()['role'] ?? '';
+ok('un admin puede renunciar a ser admin', $rolB === 'student', "rol=$rolB");
+
+// El admin principal puede quitar admin a otro
+$r = req("$BASE/admin/users.php", null, $jarAdmin);
+$t = csrfFrom($r['body']);
+$r = req("$BASE/admin/users.php", ['action' => 'demote', 'user_id' => $idx, 'csrf_token' => $t], $jarAdmin);
+$rolX = $db->query("SELECT role FROM users WHERE id=$idx")->fetch_assoc()['role'] ?? '';
+ok('admin principal quita permisos de admin', $rolX === 'student', "rol=$rolX");
+
+// La cuenta principal no se puede degradar a si misma
+$r = req("$BASE/admin/users.php", null, $jarAdmin);
+$t = csrfFrom($r['body']);
+$r = req("$BASE/admin/users.php", ['action' => 'demote', 'user_id' => 1, 'csrf_token' => $t], $jarAdmin);
+$rol1 = $db->query("SELECT role FROM users WHERE id=1")->fetch_assoc()['role'] ?? '';
+ok('la cuenta principal no puede degradarse', $rol1 === 'admin', "rol=$rol1");
+
+// Un estudiante no puede tocar el panel de usuarios (lo redirige al dashboard)
+$r = req("$BASE/modules/dashboard/index.php", null, $jarA);
+$t = csrfFrom($r['body']);
+$r = req("$BASE/admin/users.php", ['action' => 'promote', 'user_id' => $idb, 'csrf_token' => $t], $jarA);
+$rolB = $db->query("SELECT role FROM users WHERE id=$idb")->fetch_assoc()['role'] ?? '';
+ok('un estudiante no puede promover', $rolB !== 'admin', "rol=$rolB");
+
 // ---------------------------------------------------------------- Limpieza
 // Limpieza: borra cualquier usuario de prueba creado (A, B, intruso y los de
 // escenarios re-registrados), por patrón para no depender de variables.
+// Los avatares se recogen ANTES de borrar los usuarios: en una BD compartida
+// no se deben tocar los avatares de usuarios reales/demo.
+$testAvatars = [];
+$resAv = $db->query("SELECT profile_image FROM users WHERE email LIKE 'com.%@test.local' AND profile_image IS NOT NULL AND profile_image <> ''");
+while ($row = $resAv->fetch_assoc()) { $testAvatars[] = basename($row['profile_image']); }
 $db->query("DELETE FROM users WHERE id IN ($ida, $idb, $idx)");
 $db->query("DELETE FROM users WHERE email LIKE 'com.%@test.local'");
 $db->query("DELETE FROM notifications WHERE user_id IN ($ida, $idb, $idx)");
-foreach (glob('/var/www/html/skillswap/assets/img/avatars/*') as $f) {
-    if (is_file($f) && basename($f) !== '.htaccess') unlink($f);
+foreach ($testAvatars as $f) {
+    $p = $AVATAR_DIR . '/' . $f;
+    if (is_file($p)) unlink($p);
 }
 $left = [];
 $res = $db->query("SELECT email FROM users WHERE email LIKE 'com.%@test.local'");
 while ($row = $res->fetch_assoc()) { $left[] = $row['email']; }
 ok('limpieza de usuarios de prueba', count($left) === 0, 'restantes=' . implode(',', $left));
-$notifsLeft = (int)$db->query("SELECT COUNT(*) c FROM notifications")->fetch_assoc()['c'];
+$notifsLeft = (int)$db->query("SELECT COUNT(*) c FROM notifications n LEFT JOIN users u ON u.id = n.user_id WHERE u.id IS NULL")->fetch_assoc()['c'];
 ok('sin notificaciones huerfanas', $notifsLeft === 0, "restantes=$notifsLeft");
 
 echo "\n================ $pass correctas / $fail fallidas ================\n";

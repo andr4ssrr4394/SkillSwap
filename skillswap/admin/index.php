@@ -1,4 +1,6 @@
 <?php
+$pageTitle = 'Panel de administración';
+$pageDescription = 'Panel de administración de SkillSwap: gestiona usuarios, categorías de habilidades y consulta reportes y estadísticas de uso.';
 require_once __DIR__ . '/../includes/header.php';
 requireAdmin();
 

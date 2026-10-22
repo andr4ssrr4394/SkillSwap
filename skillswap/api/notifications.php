@@ -17,7 +17,8 @@ $userId = (int)$_SESSION['user_id'];
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? '';
 
-    if (!hash_equals($_SESSION['csrf_token'] ?? '', (string)($_POST['csrf_token'] ?? ''))) {
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', (string)($_POST['csrf_token'] ?? '')) || !sameOriginRequest()) {
+        securityLog('csrf_rechazado', ['ruta' => 'api/notifications']);
         http_response_code(403);
         echo json_encode(['success' => false, 'error' => 'Token de seguridad inválido']);
         $conn->close();

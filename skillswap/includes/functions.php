@@ -1,12 +1,108 @@
 <?php
 
-function sanitize($conn, $data) {
-    return $conn->real_escape_string(htmlspecialchars(trim($data)));
-}
-
 function redirect($url) {
     header("Location: $url");
     exit;
+}
+
+/**
+ * URL de un asset con un único número de versión.
+ *
+ * Centralizar la versión evita que las páginas queden "desincronizadas"
+ * (unas con ?v=4 y otras con ?v=5) y sirvió para forzar la recarga del CSS
+ * tras cada cambio de diseño. Al tocar style.css o main.js, sube ASSET_VERSION.
+ */
+const ASSET_VERSION = 12;
+
+function asset_url($path) {
+    return '/skillswap/assets/' . ltrim($path, '/') . '?v=' . ASSET_VERSION;
+}
+
+function clientIp() {
+    return $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+}
+
+/**
+ * Registro de eventos de seguridad (intentos fallidos, CSRF rechazado, límites
+ * superados). Se escribe en el log de PHP con datos útiles para auditoría, sin
+ * guardar contraseñas ni el contenido de los formularios.
+ */
+function securityLog($event, array $context = []) {
+    $ip = clientIp();
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    $line = 'SkillSwap security [' . $event . '] ip=' . $ip . ' uri=' . $uri;
+    if (!empty($context)) {
+        $parts = [];
+        foreach ($context as $k => $v) {
+            $parts[] = $k . '=' . (is_scalar($v) ? (string)$v : gettype($v));
+        }
+        $line .= ' ' . implode(' ', $parts);
+    }
+    error_log($line);
+}
+
+/**
+ * Límite global de escrituras por IP (todas las acciones POST juntas).
+ * Complementa el límite por acción y frena el abuso masivo automatizado
+ * (fuerza bruta distribuida, spam de mensajes, sondeo de endpoints).
+ * Devuelve true si se superó el máximo permitido en la ventana.
+ */
+function tooManyWrites($conn, $max = 120, $windowMinutes = 10) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        return false;
+    }
+    $ip = clientIp();
+    $stmt = $conn->prepare("SELECT COUNT(*) c FROM login_attempts
+                            WHERE email = '__write__' AND ip = ? AND success = 0
+                              AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)");
+    $stmt->bind_param("si", $ip, $windowMinutes);
+    $stmt->execute();
+    $count = (int)($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+    $stmt->close();
+    return $count >= $max;
+}
+
+function recordWrite($conn) {
+    $ip = clientIp();
+    $bucket = '__write__';
+    $stmt = $conn->prepare("INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, 0)");
+    $stmt->bind_param("ss", $bucket, $ip);
+    $stmt->execute();
+    $stmt->close();
+    // Poda ocasional para que la tabla no crezca sin control con cada escritura.
+    if (random_int(1, 50) === 1) {
+        $conn->query("DELETE FROM login_attempts WHERE email = '__write__' AND created_at < DATE_SUB(NOW(), INTERVAL 1 HOUR)");
+    }
+}
+
+// Límite de frecuencia por IP, reutilizando la tabla login_attempts.
+// $bucket identifica la acción (p. ej. '__register__').
+function rateLimitExceeded($conn, $bucket, $max, $windowMinutes) {
+    $ip = clientIp();
+    $stmt = $conn->prepare("SELECT COUNT(*) c FROM login_attempts
+                            WHERE email = ? AND ip = ? AND success = 0
+                              AND created_at > DATE_SUB(NOW(), INTERVAL ? MINUTE)");
+    $stmt->bind_param("ssi", $bucket, $ip, $windowMinutes);
+    $stmt->execute();
+    $count = (int)($stmt->get_result()->fetch_assoc()['c'] ?? 0);
+    $stmt->close();
+    return $count >= $max;
+}
+
+function rateLimitRecord($conn, $bucket) {
+    $ip = clientIp();
+    $stmt = $conn->prepare("INSERT INTO login_attempts (email, ip, success) VALUES (?, ?, 0)");
+    $stmt->bind_param("ss", $bucket, $ip);
+    $stmt->execute();
+    $stmt->close();
+}
+
+// Poda ocasional de intentos antiguos para evitar crecimiento sin control.
+function purgeOldAttempts($conn) {
+    if (random_int(1, 20) !== 1) {
+        return;
+    }
+    $conn->query("DELETE FROM login_attempts WHERE created_at < DATE_SUB(NOW(), INTERVAL 2 DAY)");
 }
 
 function flash($key, $message = null) {
@@ -90,12 +186,75 @@ function csrf_field() {
     return '<input type="hidden" name="csrf_token" value="' . csrf_token() . '">';
 }
 
+/**
+ * Rotación del token CSRF. Se llama al autenticar (login/registro) y al cerrar
+ * sesión para que un token filtrado antes del cambio de privilegios deje de ser
+ * válido (mitiga fijación de sesión/CSRF).
+ */
+function csrf_rotate() {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+
+/**
+ * Comprueba que una petición de escritura venga del propio sitio.
+ * Capa adicional a la del token CSRF: comparando el Origin (o, si falta, el
+ * Referer) contra el host evita envíos cross-site incluso si el token se filtra.
+ * Devuelve true si el origen es válido o si el navegador no envía ninguno
+ * (p. ej. clientes que no mandan cabeceras), en cuyo caso decide el token.
+ */
+function sameOriginRequest() {
+    $host = strtolower(preg_replace('/:\d+$/', '', $_SERVER['HTTP_HOST'] ?? ''));
+    if ($host === '') {
+        return true;
+    }
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    if ($origin !== '') {
+        $originHost = strtolower((string)parse_url($origin, PHP_URL_HOST));
+        return $originHost === $host;
+    }
+    $referer = $_SERVER['HTTP_REFERER'] ?? '';
+    if ($referer !== '') {
+        $refererHost = strtolower((string)parse_url($referer, PHP_URL_HOST));
+        return $refererHost === $host;
+    }
+    return true;
+}
+
 function csrf_check() {
     $token = $_POST['csrf_token'] ?? '';
-    if (!is_string($token) || empty($_SESSION['csrf_token']) || !hash_equals($_SESSION['csrf_token'], $token)) {
+    $valid = is_string($token)
+        && !empty($_SESSION['csrf_token'])
+        && hash_equals($_SESSION['csrf_token'], $token);
+    if (!$valid || !sameOriginRequest()) {
+        securityLog('csrf_rechazado', ['ruta' => $_SERVER['REQUEST_URI'] ?? '']);
         http_response_code(403);
         exit('Petición no válida.');
     }
+
+    // Límite global de escrituras por IP (protección anti-abuso). Se aplica
+    // después de validar el token para no gastar conexiones en peticiones falsas.
+    $conn = getConnection();
+    if (tooManyWrites($conn)) {
+        securityLog('limite_escrituras_superado', ['ruta' => $_SERVER['REQUEST_URI'] ?? '']);
+        $conn->close();
+        http_response_code(429);
+        exit('Demasiadas solicitudes. Inténtalo de nuevo en unos minutos.');
+    }
+    recordWrite($conn);
+    $conn->close();
+}
+
+/**
+ * Neutraliza la inyección de fórmulas en CSV ("CSV injection"): si un valor
+ * empieza por = + - @ (o tab/CR), Excel/Sheets podría ejecutarlo como fórmula.
+ * Se antepone un apóstrofo para forzar que se trate como texto.
+ */
+function csvSafe($value) {
+    $value = (string)$value;
+    if ($value !== '' && preg_match('/^[=+\-@\t\r]/', $value)) {
+        return "'" . $value;
+    }
+    return $value;
 }
 
 function getUserRoleInExchange($exchange, $userId) {

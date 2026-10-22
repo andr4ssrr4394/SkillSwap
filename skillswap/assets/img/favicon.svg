@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="SkillSwap">
+  <rect width="64" height="64" rx="14" fill="#FF4500"/>
+  <path fill="#ffffff" d="M14 25h24l-6-6 4.2-4.2L49.4 28 36.2 41.2 32 37l6-6H14z"/>
+  <path fill="#ffffff" opacity="0.55" d="M50 39H26l6 6-4.2 4.2L14.6 36 27.8 22.8 32 27l-6 6h24z"/>
+</svg>

@@ -176,7 +176,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             ($currentUser['name'] ?? 'Un estudiante') . ' te propuso un intercambio #' . $conn->insert_id . '.',
                             '/skillswap/modules/exchanges/index.php'
                         );
-                        flash('success', 'Propuesta de intercambio enviada para ' . $what . '. Espera la respuesta de ' . htmlspecialchars($target['name']) . '.');
+                        flash('success', 'Propuesta de intercambio enviada para ' . $what . '. Espera la respuesta de ' . $target['name'] . '.');
                         $conn->close();
                         redirect('/skillswap/modules/exchanges/index.php');
                     } else {
@@ -190,6 +190,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // A partir de aquí se emite la página (header incluido)
+$pageTitle = 'Proponer un intercambio';
+$pageDescription = 'Propón un intercambio de habilidades en SkillSwap: elige la habilidad, la modalidad (virtual o presencial), la fecha y la duración, y envía tu propuesta.';
 require_once __DIR__ . '/../../includes/header.php';
 ?>
 
@@ -351,10 +353,14 @@ require_once __DIR__ . '/../../includes/header.php';
                     var p = parseFloat(pInput.value) || 0;
                     var mv = myBal + g - p;
                     var tv = tarBal + p - g;
+                    // Colores tomados de la paleta de la app (no valores sueltos).
+                    var root = getComputedStyle(document.documentElement);
+                    var cNeg = root.getPropertyValue('--sk-coral').trim() || '#c96b6b';
+                    var cPos = root.getPropertyValue('--sk-green').trim() || '#4c9a63';
                     myProj.textContent = fmt(mv);
                     tProj.textContent = fmt(tv);
-                    myProj.style.color = mv < 0 ? '#dc3545' : '#198754';
-                    tProj.style.color = tv < 0 ? '#dc3545' : '#198754';
+                    myProj.style.color = mv < 0 ? cNeg : cPos;
+                    tProj.style.color = tv < 0 ? cNeg : cPos;
                 }
                 window.upd = upd;
                 function toggleOffered() {

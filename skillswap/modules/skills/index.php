@@ -1,4 +1,6 @@
 <?php
+$pageTitle = 'Explorar habilidades';
+$pageDescription = 'Descubre qué habilidades ofrecen otros estudiantes y encuentra a quién enseñarle las tuyas. Busca por categoría o palabra clave y propón un intercambio.';
 require_once __DIR__ . '/../../includes/header.php';
 requireLogin();
 
@@ -164,7 +166,7 @@ $categories = $conn->query("SELECT * FROM categories ORDER BY name");
                     <div class="card-body">
                         <div class="d-flex justify-content-between">
                             <h6 class="card-title mb-1">
-                                <i class="bi <?= $r['icon'] ?>"></i> <?= htmlspecialchars($r['skill_name']) ?>
+                                <i class="bi <?= htmlspecialchars($r['icon']) ?>"></i> <?= htmlspecialchars($r['skill_name']) ?>
                             </h6>
                             <span class="badge <?= getLevelBadgeClass($r['level']) ?>"><?= getLevelLabel($r['level']) ?></span>
                         </div>

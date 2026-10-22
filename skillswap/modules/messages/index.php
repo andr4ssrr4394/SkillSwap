@@ -27,6 +27,8 @@ if ($exchangeId === 0) {
     $inbox->execute();
     $inboxResult = $inbox->get_result();
     $inbox->close();
+    $pageTitle = 'Mensajes';
+    $pageDescription = 'Tus conversaciones en SkillSwap: revisa los mensajes de cada intercambio, continúa la conversación y acuerda los detalles de la sesión.';
     require_once __DIR__ . '/../../includes/header.php';
     ?>
     <div class="thread-header mb-4">
@@ -102,6 +104,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // A partir de aquí se emite la página
+$pageTitle = 'Mensajes';
+$pageDescription = 'Chatea con tus compañeros de intercambio en SkillSwap: acuerda los detalles de la sesión, comparte material y resuelve tus dudas.';
 require_once __DIR__ . '/../../includes/header.php';
 
 $otherId = $userId == $exchange['proposer_id'] ? $exchange['acceptor_id'] : $exchange['proposer_id'];

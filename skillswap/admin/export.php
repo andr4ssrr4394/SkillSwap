@@ -31,9 +31,9 @@ if ($type === 'users') {
     while ($row = $res->fetch_assoc()) {
         fputcsv($out, [
             $row['id'],
-            $row['name'],
-            $row['email'],
-            $row['career'] !== '' && $row['career'] !== null ? $row['career'] : '-',
+            csvSafe($row['name']),
+            csvSafe($row['email']),
+            csvSafe($row['career'] !== '' && $row['career'] !== null ? $row['career'] : '-'),
             $row['semester'] ? $row['semester'] . '°' : '-',
             $row['hours_balance'],
             $row['role'],
@@ -71,10 +71,10 @@ if ($type === 'exchanges') {
     while ($row = $res->fetch_assoc()) {
         fputcsv($out, [
             $row['id'],
-            $row['proposer'],
-            $row['acceptor'],
-            $row['offered'] ?: '-',
-            $row['requested'] ?: '-',
+            csvSafe($row['proposer']),
+            csvSafe($row['acceptor']),
+            csvSafe($row['offered'] ?: '-'),
+            csvSafe($row['requested'] ?: '-'),
             $row['proposer_hours'],
             $row['acceptor_hours'],
             getStatusLabel($row['status']),

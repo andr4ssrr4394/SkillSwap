@@ -1,0 +1,43 @@
+# ===========================================================================
+# SkillSwap - Endurecimiento para hosting compartido (requiere AllowOverride All)
+# En este servidor local, el vhost de Apache aplica además estas reglas.
+# ===========================================================================
+
+# Sin listado de directorios
+Options -Indexes
+
+# Denegar ficheros sensibles (dumps, respaldos, documentación, scripts)
+<FilesMatch "(?i)\.(sql|sql\.gz|bak|old|orig|log|md|zip|tar|gz|ini|sh)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Denegar ficheros ocultos (.git, .env, .htaccess, etc.)
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+# Denegar el acceso HTTP a carpetas internas (solo se usan desde PHP)
+RedirectMatch 403 (?i)^/(skillswap/)?(database|includes|config|pruebas)(/|$)
+
+# Nunca exponer la configuración con credenciales
+<Files "db.php">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</Files>

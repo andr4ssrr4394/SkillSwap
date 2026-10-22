@@ -1,4 +1,6 @@
 <?php
+$pageTitle = 'Perfil de usuario';
+$pageDescription = 'Consulta el perfil público de un estudiante en SkillSwap: las habilidades que ofrece y busca, sus valoraciones y su experiencia de intercambio.';
 require_once __DIR__ . '/../../includes/header.php';
 requireLogin();
 
@@ -125,7 +127,7 @@ $profileAvatar = getAvatarUrl($user);
         <div class="mt-3">
             <?php foreach ($badges as $badge): ?>
                 <span class="badge <?= $badge['class'] ?> me-1" title="<?= htmlspecialchars($badge['desc']) ?>">
-                    <i class="bi <?= $badge['icon'] ?>"></i> <?= htmlspecialchars($badge['name']) ?>
+                    <i class="bi <?= htmlspecialchars($badge['icon']) ?>"></i> <?= htmlspecialchars($badge['name']) ?>
                 </span>
             <?php endforeach; ?>
         </div>
@@ -149,7 +151,7 @@ $profileAvatar = getAvatarUrl($user);
                     <div class="d-flex justify-content-between align-items-center border-bottom py-2">
                         <div>
                             <strong><?= htmlspecialchars($s['skill_name']) ?></strong>
-                            <br><small class="text-muted"><i class="bi <?= $s['icon'] ?>"></i> <?= htmlspecialchars($s['category_name']) ?></small>
+                            <br><small class="text-muted"><i class="bi <?= htmlspecialchars($s['icon']) ?>"></i> <?= htmlspecialchars($s['category_name']) ?></small>
                             <?php if ($s['description']): ?>
                                 <br><small class="text-muted"><?= htmlspecialchars($s['description']) ?></small>
                             <?php endif; ?>
@@ -170,7 +172,7 @@ $profileAvatar = getAvatarUrl($user);
                     <div class="d-flex justify-content-between align-items-center border-bottom py-2">
                         <div>
                             <strong><?= htmlspecialchars($s['skill_name']) ?></strong>
-                            <br><small class="text-muted"><i class="bi <?= $s['icon'] ?>"></i> <?= htmlspecialchars($s['category_name']) ?></small>
+                            <br><small class="text-muted"><i class="bi <?= htmlspecialchars($s['icon']) ?>"></i> <?= htmlspecialchars($s['category_name']) ?></small>
                         </div>
                         <span class="badge <?= getLevelBadgeClass($s['level']) ?>"><?= getLevelLabel($s['level']) ?></span>
                     </div>
@@ -204,7 +206,7 @@ $profileAvatar = getAvatarUrl($user);
                         <a href="<?= htmlspecialchars($c['credential_url']) ?>" target="_blank" rel="noopener" class="small"><i class="bi bi-box-arrow-up-right"></i> Ver credencial</a>
                     <?php endif; ?>
                     <?php if ($c['file_path']): ?>
-                        <a href="/skillswap/modules/profile/file.php?id=<?= $c['id'] ?>" target="_blank" class="small ms-2"><i class="bi bi-file-earmark<?= str_ends_with($c['file_path'], '.pdf') ? '-pdf' : '-image' ?>"></i> Ver archivo</a>
+                        <a href="/skillswap/modules/profile/file.php?id=<?= $c['id'] ?>" target="_blank" rel="noopener" class="small ms-2"><i class="bi bi-file-earmark<?= str_ends_with($c['file_path'], '.pdf') ? '-pdf' : '-image' ?>"></i> Ver archivo</a>
                     <?php endif; ?>
                 <?php endif; ?>
             </div>

@@ -138,7 +138,8 @@ try {
     flash('success', 'Extensión confirmada: la dirección ahora es de ' . formatHours($newHours) . '.');
 } catch (Exception $e) {
     $conn->rollback();
-    flash('error', 'No se pudo confirmar la extensión: ' . $e->getMessage());
+    error_log('SkillSwap extend.php: ' . $e->getMessage());
+    flash('error', 'No se pudo confirmar la extensión. Inténtalo de nuevo.');
 }
 
 $conn->close();

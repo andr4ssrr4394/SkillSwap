@@ -159,7 +159,8 @@ try {
     }
 } catch (Exception $e) {
     $conn->rollback();
-    flash('error', 'Error al procesar la finalización: ' . $e->getMessage());
+    error_log('SkillSwap complete.php: ' . $e->getMessage());
+    flash('error', 'No se pudo procesar la finalización. Inténtalo de nuevo.');
 }
 
 $conn->close();

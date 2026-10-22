@@ -1,9 +1,11 @@
 <?php
+$pageTitle = 'Mis matches';
+$pageDescription = 'Encuentra estudiantes compatibles en SkillSwap: personas que quieren aprender lo que enseñas y que pueden enseñarte lo que buscas.';
 require_once __DIR__ . '/../../includes/header.php';
 requireLogin();
 
 $conn = getConnection();
-$userId = $_SESSION['user_id'];
+$userId = (int)$_SESSION['user_id'];
 
 // Bidirectional matches: user offers what I want AND wants what I offer
 $matches = $conn->query("
@@ -45,12 +47,35 @@ $oneWay = $conn->query("
     <p class="text-muted">Estudiantes con habilidades complementarias a las tuyas.</p>
 </div>
 
+<div class="match-legend mb-4">
+    <div class="match-legend-item bidirectional">
+        <i class="bi bi-arrow-left-right"></i>
+        <div>
+            <strong>Bidireccional</strong>
+            <span>Se enseñan mutuamente: cada uno aporta una habilidad y gana horas.</span>
+        </div>
+    </div>
+    <div class="match-legend-item oneway">
+        <i class="bi bi-arrow-right"></i>
+        <div>
+            <strong>Solo ellos te enseñan</strong>
+            <span>Tienen algo que querés aprender; esas horas las pagás con tu saldo.</span>
+        </div>
+    </div>
+</div>
+
 <?php if ($matches->num_rows > 0): ?>
-    <h5 class="mb-3"><span class="text-muted" style="font-size:0.85rem">MATCHES BIDIRECCIONALES</span></h5>
+    <h5 class="mb-3 d-flex align-items-center flex-wrap gap-2">
+        <span class="match-type-badge bidirectional"><i class="bi bi-arrow-left-right"></i> Bidireccionales</span>
+        <span class="text-muted" style="font-size:0.85rem">se enseñan mutuamente · <?= $matches->num_rows ?></span>
+    </h5>
     <div class="row g-3 mb-4">
         <?php while ($m = $matches->fetch_assoc()): ?>
             <div class="col-md-6 col-lg-4">
                 <div class="reddit-card match-card h-100">
+                        <div class="mb-2">
+                            <span class="match-type-badge bidirectional"><i class="bi bi-arrow-left-right"></i> Bidireccional</span>
+                        </div>
                         <div class="d-flex justify-content-between align-items-start">
                             <h5 class="mb-0">
                                 <a href="/skillswap/modules/profile/view.php?id=<?= $m['id'] ?>"><?= htmlspecialchars($m['name']) ?></a>
@@ -90,11 +115,17 @@ $oneWay = $conn->query("
 <?php endif; ?>
 
 <?php if ($oneWay->num_rows > 0): ?>
-    <h5 class="mb-3"><span class="text-muted" style="font-size:0.85rem">PUEDEN ENSEÑARTE</span></h5>
+    <h5 class="mb-3 d-flex align-items-center flex-wrap gap-2">
+        <span class="match-type-badge oneway"><i class="bi bi-arrow-right"></i> Solo ellos te enseñan</span>
+        <span class="text-muted" style="font-size:0.85rem">uno-way · <?= $oneWay->num_rows ?></span>
+    </h5>
     <div class="row g-3">
         <?php while ($m = $oneWay->fetch_assoc()): ?>
             <div class="col-md-6 col-lg-4">
                 <div class="reddit-card match-card oneway h-100">
+                    <div class="mb-2">
+                        <span class="match-type-badge oneway"><i class="bi bi-arrow-right"></i> Solo ellos te enseñan</span>
+                    </div>
                     <h6 class="mb-0">
                         <a href="/skillswap/modules/profile/view.php?id=<?= $m['id'] ?>"><?= htmlspecialchars($m['name']) ?></a>
                     </h6>
@@ -103,6 +134,12 @@ $oneWay = $conn->query("
                     <?php foreach (array_values(array_filter(explode(',', $m['they_teach_me']))) as $s): ?>
                         <span class="badge bg-success-subtle text-success-emphasis me-1"><?= htmlspecialchars(trim($s)) ?></span>
                     <?php endforeach; ?>
+                    <p class="text-muted small mt-2 mb-2">
+                        <i class="bi bi-clock-history"></i> Aprenderías y pagarías esas horas con tu saldo.
+                    </p>
+                    <a href="/skillswap/modules/exchanges/propose.php?user_id=<?= $m['id'] ?>" class="btn btn-orange w-100">
+                        <i class="bi bi-arrow-repeat"></i> Proponer Intercambio
+                    </a>
                 </div>
             </div>
         <?php endwhile; ?>

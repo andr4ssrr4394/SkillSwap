@@ -74,6 +74,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // A partir de aquí se emite la página
+$pageTitle = 'Dejar una valoración';
+$pageDescription = 'Valora el intercambio realizado en SkillSwap: puntúa a tu compañero y deja un comentario para ayudar a la comunidad a elegir mejor.';
 require_once __DIR__ . '/../../includes/header.php';
 ?>
 

@@ -71,7 +71,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $token = $_POST['csrf_token'] ?? ($_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-    if (!hash_equals($_SESSION['csrf_token'] ?? '', (string)$token)) {
+    if (!hash_equals($_SESSION['csrf_token'] ?? '', (string)$token) || !sameOriginRequest()) {
+        securityLog('csrf_rechazado', ['ruta' => 'api/messages']);
         jsonFail($conn, 403, 'Token de seguridad inválido');
     }
 

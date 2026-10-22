@@ -174,6 +174,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     }
 }
 
+$pageTitle = 'Editar perfil';
+$pageDescription = 'Actualiza tu perfil de SkillSwap: cambia tus datos, sube tu avatar y elige las habilidades que ofreces y las que quieres aprender.';
 require_once __DIR__ . '/../../includes/header.php';
 
 $user = getCurrentUser();
@@ -474,7 +476,7 @@ $certStmt->close();
                                     <br><small class="text-muted">Emitido: <?= date('d/m/Y', strtotime($c['issue_date'])) ?></small>
                                 <?php endif; ?>
                                 <?php if ($c['skill_name']): ?>
-                                    <span class="badge bg-info text-white ms-1"><i class="bi <?= $c['icon'] ?? 'bi-patch-check' ?>"></i> <?= htmlspecialchars($c['skill_name']) ?></span>
+                                    <span class="badge bg-info text-white ms-1"><i class="bi <?= htmlspecialchars($c['icon'] ?? 'bi-patch-check') ?>"></i> <?= htmlspecialchars($c['skill_name']) ?></span>
                                 <?php endif; ?>
                                 <?php if ($c['credential_url'] || $c['file_path']): ?>
                                     <br>
@@ -482,7 +484,7 @@ $certStmt->close();
                                         <a href="<?= htmlspecialchars($c['credential_url']) ?>" target="_blank" rel="noopener" class="small"><i class="bi bi-box-arrow-up-right"></i> Ver credencial</a>
                                     <?php endif; ?>
                                     <?php if ($c['file_path']): ?>
-                                        <a href="/skillswap/modules/profile/file.php?id=<?= $c['id'] ?>" target="_blank" class="small ms-2"><i class="bi bi-file-earmark<?= str_ends_with($c['file_path'], '.pdf') ? '-pdf' : '-image' ?>"></i> Ver archivo</a>
+                                        <a href="/skillswap/modules/profile/file.php?id=<?= $c['id'] ?>" target="_blank" rel="noopener" class="small ms-2"><i class="bi bi-file-earmark<?= str_ends_with($c['file_path'], '.pdf') ? '-pdf' : '-image' ?>"></i> Ver archivo</a>
                                     <?php endif; ?>
                                 <?php endif; ?>
                             </div>

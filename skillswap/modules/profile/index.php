@@ -1,9 +1,11 @@
 <?php
+$pageTitle = 'Mi perfil';
+$pageDescription = 'Tu perfil de SkillSwap: consulta tus habilidades ofrecidas y buscadas, tus horas acumuladas, tus insignias, valoraciones y certificados.';
 require_once __DIR__ . '/../../includes/header.php';
 requireLogin();
 
 $conn = getConnection();
-$userId = $_SESSION['user_id'];
+$userId = (int)$_SESSION['user_id'];
 
 $user = getCurrentUser();
 $offered = $conn->query("
@@ -80,7 +82,7 @@ $myCerts = $conn->query("
                 <small class="text-light">(<?= $rating['total'] ?> reseñas)</small>
             <?php endif; ?>
             <div class="mt-2">
-                <a href="/skillswap/modules/profile/certificate.php" target="_blank" class="btn btn-sm btn-outline-light">
+                <a href="/skillswap/modules/profile/certificate.php" target="_blank" rel="noopener" class="btn btn-sm btn-outline-light">
                     <i class="bi bi-file-earmark-text"></i> Constancia de horas
                 </a>
             </div>
@@ -92,7 +94,7 @@ $myCerts = $conn->query("
         <div class="mt-3">
             <?php foreach ($ownBadges as $badge): ?>
                 <span class="badge <?= $badge['class'] ?> me-1" title="<?= htmlspecialchars($badge['desc']) ?>">
-                    <i class="bi <?= $badge['icon'] ?>"></i> <?= htmlspecialchars($badge['name']) ?>
+                    <i class="bi <?= htmlspecialchars($badge['icon']) ?>"></i> <?= htmlspecialchars($badge['name']) ?>
                 </span>
             <?php endforeach; ?>
         </div>
@@ -112,7 +114,7 @@ $myCerts = $conn->query("
                             <div>
                                 <strong><?= htmlspecialchars($s['skill_name']) ?></strong>
                                 <br><small class="text-muted">
-                                    <i class="bi <?= $s['icon'] ?>"></i> <?= htmlspecialchars($s['category_name']) ?>
+                                    <i class="bi <?= htmlspecialchars($s['icon']) ?>"></i> <?= htmlspecialchars($s['category_name']) ?>
                                 </small>
                                 <?php if ($s['description']): ?>
                                     <br><small class="text-muted"><?= htmlspecialchars($s['description']) ?></small>
@@ -142,7 +144,7 @@ $myCerts = $conn->query("
                             <div>
                                 <strong><?= htmlspecialchars($s['skill_name']) ?></strong>
                                 <br><small class="text-muted">
-                                    <i class="bi <?= $s['icon'] ?>"></i> <?= htmlspecialchars($s['category_name']) ?>
+                                    <i class="bi <?= htmlspecialchars($s['icon']) ?>"></i> <?= htmlspecialchars($s['category_name']) ?>
                                 </small>
                             </div>
                             <span class="badge <?= getLevelBadgeClass($s['level']) ?>">
@@ -190,7 +192,7 @@ $myCerts = $conn->query("
                                 <a href="<?= htmlspecialchars($c['credential_url']) ?>" target="_blank" rel="noopener" class="small"><i class="bi bi-box-arrow-up-right"></i> Ver credencial</a>
                             <?php endif; ?>
                             <?php if ($c['file_path']): ?>
-                                <a href="/skillswap/modules/profile/file.php?id=<?= $c['id'] ?>" target="_blank" class="small ms-2"><i class="bi bi-file-earmark<?= str_ends_with($c['file_path'], '.pdf') ? '-pdf' : '-image' ?>"></i> Ver archivo</a>
+                                <a href="/skillswap/modules/profile/file.php?id=<?= $c['id'] ?>" target="_blank" rel="noopener" class="small ms-2"><i class="bi bi-file-earmark<?= str_ends_with($c['file_path'], '.pdf') ? '-pdf' : '-image' ?>"></i> Ver archivo</a>
                             <?php endif; ?>
                         <?php endif; ?>
                     </div>
